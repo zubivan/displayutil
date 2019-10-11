@@ -1,4 +1,4 @@
-use core_graphics::display::CGDisplay;
+use core_graphics::display::*;
 
 fn main() {
     let displays = CGDisplay::active_displays();
