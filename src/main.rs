@@ -1,3 +1,4 @@
+use clap::{App, Arg, SubCommand};
 use core_graphics::display::*;
 
 struct DisplayLocation {
@@ -13,6 +14,25 @@ impl DisplayLocation {
 }
 
 fn main() {
+    let config = App::new("DisplayKeeper")
+        .version("0.1")
+        .author("Ivan Z. <zub.ivan@gmail.com>")
+        .arg(
+            Arg::with_name("save")
+                .long("save")
+                .takes_value(true)
+                .value_name("CONFIG_NAME")
+        )
+        .arg(
+            Arg::with_name("restore")
+                .long("restore")
+                .takes_value(true)
+                .value_name("CONFIG_NAME")
+        )
+        .get_matches();
+
+    
+
     let stored_config = vec![
         DisplayLocation::new(731409289, -1714, -1440),
         DisplayLocation::new(69733382, 0, 0),
