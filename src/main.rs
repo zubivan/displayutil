@@ -30,29 +30,19 @@ fn main() {
                         let bounds = display.bounds();
                         let origin = bounds.origin;
                         println!("Configuring display id: {}", id);
-                        println!(
-                            "- model number {}",
-                            display.model_number()
-                        );
-                        println!(
-                            "- unit number {}",
-                            display.unit_number()
-                        );
-                        println!(
-                            "- vendor number {}",
-                            display.vendor_number()
-                        );
-                        
-                        println!(
-                            "- current display origin is {}:{}",
-                            origin.x, origin.y
-                        );
+                        println!("- model number {}", display.model_number());
+                        println!("- unit number {}", display.unit_number());
+                        println!("- vendor number {}", display.vendor_number());
+
+                        println!("- current display origin is {}:{}", origin.x, origin.y);
                         println!(
                             "- cached display origin is {}:{}",
                             display_config.x, display_config.y
                         );
 
-                        if origin.x == (display_config.x as f64) && origin.y == (display_config.y as f64) {
+                        if origin.x == (display_config.x as f64)
+                            && origin.y == (display_config.y as f64)
+                        {
                             println!("- already in the right position");
                             continue;
                         }
