@@ -5,7 +5,7 @@ name: build
 jobs:
   check:
     name: Rust project
-    runs-on: ubuntu-latest
+    runs-on: macOS-latest
     steps:
       - uses: actions/checkout@master
       - name: Install nightly
@@ -14,7 +14,7 @@ jobs:
             toolchain: nightly
             override: true
 
-      - name: Run cargo check
+      - name: Build
         uses: actions-rs/cargo@v1
         with:
           command: build
