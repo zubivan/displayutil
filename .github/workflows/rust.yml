@@ -1,15 +1,20 @@
-name: Rust
-
 on: [push]
 
+name: build
+
 jobs:
-  build:
-
-    runs-on: macOS-latest
-
+  check:
+    name: Rust project
+    runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v1
-    - name: Build
-      run: cargo build --verbose
-    - name: Run tests
-      run: cargo test --verbose
+      - uses: actions/checkout@master
+      - name: Install nightly
+        uses: actions-rs/toolchain@v1
+        with:
+            toolchain: nightly
+            override: true
+
+      - name: Run cargo check
+        uses: actions-rs/cargo@v1
+        with:
+          command: build
