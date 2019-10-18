@@ -1,4 +1,4 @@
-use clap::{App, Arg, SubCommand};
+use clap::{App, Arg};
 use core_graphics::display::*;
 
 struct DisplayLocation {
@@ -21,18 +21,30 @@ fn main() {
             Arg::with_name("save")
                 .long("save")
                 .takes_value(true)
-                .value_name("CONFIG_NAME")
+                .value_name("CONFIG_NAME"),
         )
         .arg(
             Arg::with_name("restore")
                 .long("restore")
                 .takes_value(true)
-                .value_name("CONFIG_NAME")
+                .value_name("CONFIG_NAME"),
         )
         .get_matches();
 
-    
+    let save_location = config.value_of("save");
+    let restore_location = config.value_of("restore");
 
+    match (save_location, restore_location) {
+        (Some(_), Some(_)) => {
+            eprintln!("Both save and restore commands were specified.");
+        }
+        (None, Some(config_name)) => restore(&config_name),
+        (Some(config_name), None) => save(&config_name),
+        (None, None) => eprintln!("Configuration is required."),
+    }
+}
+
+fn restore(config_name: &str) {
     let stored_config = vec![
         DisplayLocation::new(731409289, -1714, -1440),
         DisplayLocation::new(69733382, 0, 0),
@@ -91,6 +103,8 @@ fn main() {
         Result::Err(err) => panic!(err),
     }
 }
+
+fn save(configName: &str) {}
 
 pub trait CGDisplayExt {
     fn change_display_location(
