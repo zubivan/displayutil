@@ -1,10 +1,25 @@
 use clap::{App, Arg};
-use core_graphics::display::*;
+use core_graphics::display::{
+    CGConfigureOption, CGDirectDisplayID, CGDisplay, CGDisplayConfigRef, CGError,
+};
+use dirs::home_dir;
+use std::path::{Path, PathBuf};
+use std::io::Write;
+use std::fs::File;
 
+use serde::{Deserialize, Serialize};
+
+#[derive(Serialize, Deserialize)]
 struct DisplayLocation {
     id: u32,
     x: i32,
     y: i32,
+}
+
+#[derive(Serialize, Deserialize)]
+struct ConfigurationElement {
+    name: String,
+    configuration: Vec<DisplayLocation>,
 }
 
 impl DisplayLocation {
@@ -20,12 +35,17 @@ fn main() {
         .arg(
             Arg::with_name("save")
                 .long("save")
+                .conflicts_with("restore")
+                .required(true)
                 .takes_value(true)
+                .default_value("default")
                 .value_name("CONFIG_NAME"),
         )
         .arg(
             Arg::with_name("restore")
                 .long("restore")
+                .conflicts_with("save")
+                .required(true)
                 .takes_value(true)
                 .value_name("CONFIG_NAME"),
         )
@@ -35,13 +55,50 @@ fn main() {
     let restore_location = config.value_of("restore");
 
     match (save_location, restore_location) {
-        (Some(_), Some(_)) => {
+        (Some("default"), Some("default")) => {
             eprintln!("Both save and restore commands were specified.");
         }
         (None, Some(config_name)) => restore(&config_name),
         (Some(config_name), None) => save(&config_name),
-        (None, None) => eprintln!("Configuration is required."),
+        (_, _) => eprintln!("Configuration is invalid."),
     }
+}
+
+fn save(config_name: &str) {
+    const DEFAULT_CONFIG_LOCATION: &str = ".displaykeeper";
+
+    let home_dir = home_dir().unwrap();
+    let home_dir = home_dir.as_path();
+
+    let config_path = home_dir.join(DEFAULT_CONFIG_LOCATION);
+
+    let current_state = get_active_displays();
+    let configuration = ConfigurationElement {
+        name: config_name.to_string(),
+        configuration: current_state.unwrap(),
+    };
+    let json_config = serde_json::to_string_pretty(&configuration);
+
+    let mut file = File::create(config_path).unwrap();
+    file.write_all(json_config.unwrap().as_bytes()).unwrap();
+}
+
+fn get_active_displays() -> Option<Vec<DisplayLocation>> {
+    let displays = CGDisplay::active_displays();
+    let mut result: Vec<DisplayLocation> = Vec::new();
+    match displays {
+        Result::Ok(displays) => {
+            for &id in &displays {
+                let display = CGDisplay::new(id);
+                let bounds = display.bounds();
+                let origin = bounds.origin;
+                result.push(DisplayLocation::new(id, origin.x as i32, origin.y as i32));
+            }
+        }
+        Result::Err(e) => panic!(e),
+    };
+
+    Some(result)
 }
 
 fn restore(config_name: &str) {
@@ -103,8 +160,6 @@ fn restore(config_name: &str) {
         Result::Err(err) => panic!(err),
     }
 }
-
-fn save(configName: &str) {}
 
 pub trait CGDisplayExt {
     fn change_display_location(
