@@ -163,8 +163,8 @@ fn restore(config_name: &str) -> CommandResult {
                             display_config.x, display_config.y
                         );
 
-                        if origin.x == (display_config.x as f64)
-                            && origin.y == (display_config.y as f64)
+                        if origin.x as i32 == display_config.x
+                            && origin.y as i32 == display_config.y
                         {
                             println!("- already in the right position");
                             continue;
