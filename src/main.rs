@@ -1,13 +1,14 @@
 use clap::{App, Arg};
-use core_graphics::display::{
-    CGConfigureOption, CGDirectDisplayID, CGDisplay, CGDisplayConfigRef, CGError,
-};
+use core_graphics::display::{CGDisplay};
 use dirs::home_dir;
 use std::path::{Path, PathBuf};
 use std::io::Write;
 use std::fs::File;
 
 use serde::{Deserialize, Serialize};
+
+mod cg_extensions;
+use cg_extensions::change_display_location;
 
 #[derive(Serialize, Deserialize)]
 struct DisplayLocation {
@@ -137,62 +138,18 @@ fn restore(config_name: &str) {
                         }
 
                         println!("- starting display configuration");
-                        let config = display.begin_configuration().unwrap();
-                        display
-                            .change_display_location(config, display_config.x, display_config.y)
-                            .unwrap();
 
-                        display
-                            .complete_configuration(
-                                &config,
-                                CGConfigureOption::ConfigurePermanently,
-                            )
-                            .unwrap();
+                        change_display_location(id, display_config.x, display_config.y);
                         println!("- finished display configuration");
                     }
                     None => {
                         println!("No cached config exists");
                         continue;
                     }
-                }
-            }
+        }
+    }
         }
         Result::Err(err) => panic!(err),
     }
 }
-
-pub trait CGDisplayExt {
-    fn change_display_location(
-        &self,
-        config: CGDisplayConfigRef,
-        x: i32,
-        y: i32,
-    ) -> Result<(), CGError>;
-}
-
-impl CGDisplayExt for CGDisplay {
-    fn change_display_location(
-        &self,
-        config: CGDisplayConfigRef,
-        x: i32,
-        y: i32,
-    ) -> Result<(), CGError> {
-        let result = unsafe { CGConfigureDisplayOrigin(config, self.id, x, y) };
-
-        if result == 0 {
-            Ok(())
-        } else {
-            Err(result)
-        }
-    }
-}
-
-#[link(name = "CoreGraphics", kind = "framework")]
-extern "C" {
-    pub fn CGConfigureDisplayOrigin(
-        config: CGDisplayConfigRef,
-        display: CGDirectDisplayID,
-        x: i32,
-        y: i32,
-    ) -> CGError;
 }
