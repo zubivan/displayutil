@@ -159,7 +159,7 @@ fn restore(config_name: &str) -> CommandResult {
 
                         println!("- current display origin is {}:{}", origin.x, origin.y);
                         println!(
-                            "- cached display origin is {}:{}",
+                            "- stored display origin is {}:{}",
                             display_config.x, display_config.y
                         );
 
@@ -176,7 +176,7 @@ fn restore(config_name: &str) -> CommandResult {
                         println!("- finished display configuration");
                     }
                     None => {
-                        println!("No cached config exists");
+                        println!("No stored config exists");
                         continue;
                     }
                 };
