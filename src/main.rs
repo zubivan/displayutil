@@ -3,8 +3,8 @@ use core_graphics::display::CGDisplay;
 use dirs::home_dir;
 use std::error::Error;
 use std::fs::File;
-use std::io::Write;
-use std::path::{Path, PathBuf};
+use std::io::{BufReader, Write};
+use std::path::PathBuf;
 
 use serde::{Deserialize, Serialize};
 
@@ -40,34 +40,30 @@ fn main() {
             Arg::with_name("save")
                 .long("save")
                 .conflicts_with("restore")
-                .required(true)
-                .takes_value(true)
-                .default_value("default")
-                .value_name("CONFIG_NAME"),
+                .required(true),
         )
         .arg(
             Arg::with_name("restore")
                 .long("restore")
                 .conflicts_with("save")
-                .required(true)
-                .takes_value(true)
-                .value_name("CONFIG_NAME"),
+                .required(true),
         )
         .get_matches();
 
-    let save_location = config.value_of("save");
-    let restore_location = config.value_of("restore");
+    let save_location = config.is_present("save");
+    let restore_location = config.is_present("restore");
 
     let execution_result = match (save_location, restore_location) {
-        (Some("default"), Some("default")) => {
-            Result::Err(Box::from("Both 'save' and 'restore' options are specified"))
+        (true, true) => Result::Err(Box::from("Both 'save' and 'restore' options are specified")),
+        (false, true) => {
+            println!("Restoring configuration");
+            restore("default")
         }
-        (None, Some(config_name)) => restore(&config_name),
-        (Some(config_name), None) => {
-            println!("Saving current configuration with name '{}'", config_name);
-            save(&config_name)
+        (true, false) => {
+            println!("Saving current configuration");
+            save("default")
         }
-        (_, _) => Result::Err(Box::from("Configuration is invalid")),
+        _ => Result::Err(Box::from("Configuration is invalid")),
     };
 
     ::std::process::exit(match execution_result {
@@ -83,26 +79,44 @@ fn main() {
 }
 
 fn save(config_name: &str) -> CommandResult {
+    let current_state = get_active_displays();
+    let configuration = ConfigurationElement {
+        name: config_name.to_string(),
+        configuration: current_state?,
+    };
+    let json_config = serde_json::to_string_pretty(&configuration);
+
+    let config_path = get_config_file_location();
+
+    let mut file = File::create(config_path)?;
+    let write_file = file.write_all(json_config?.as_bytes());
+    match write_file {
+        Result::Ok(_) => Result::Ok(()),
+        Result::Err(err) => Result::Err(Box::from(err)),
+    }
+}
+
+fn read_stored_config(config_name: &str) -> Result<Vec<DisplayLocation>, Box<dyn Error>> {
+    let config_path = get_config_file_location();
+    let file = File::open(config_path)?;
+    let reader = BufReader::new(file);
+    let store: ConfigurationElement = serde_json::from_reader(reader)?;
+
+    if store.name == config_name {
+        Ok(store.configuration)
+    } else {
+        Err(Box::from("Configuration not found"))
+    }
+}
+
+fn get_config_file_location() -> PathBuf {
     const DEFAULT_CONFIG_LOCATION: &str = ".displaykeeper";
 
     let home_dir = home_dir().unwrap();
     let home_dir = home_dir.as_path();
 
-    let config_path = home_dir.join(DEFAULT_CONFIG_LOCATION);
-
-    let current_state = get_active_displays();
-    let configuration = ConfigurationElement {
-        name: config_name.to_string(),
-        configuration: current_state.unwrap(),
-    };
-    let json_config = serde_json::to_string_pretty(&configuration);
-
-    let mut file = File::create(config_path).unwrap();
-    let write_file = file.write_all(json_config.unwrap().as_bytes());
-    match write_file {
-        Result::Ok(_) => Result::Ok(()),
-        Result::Err(err) => Result::Err(Box::from(err)),
-    }
+    let config_location: PathBuf = home_dir.join(DEFAULT_CONFIG_LOCATION);
+    config_location.to_owned()
 }
 
 fn get_active_displays() -> Result<Vec<DisplayLocation>, Box<dyn Error>> {
@@ -126,11 +140,7 @@ fn get_active_displays() -> Result<Vec<DisplayLocation>, Box<dyn Error>> {
 }
 
 fn restore(config_name: &str) -> CommandResult {
-    let stored_config = vec![
-        DisplayLocation::new(731409289, -1714, -1440),
-        DisplayLocation::new(69733382, 0, 0),
-        DisplayLocation::new(731409290, 846, -1440),
-    ];
+    let stored_config = read_stored_config(config_name)?;
 
     let displays = CGDisplay::active_displays();
     match displays {
