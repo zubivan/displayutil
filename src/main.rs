@@ -1,9 +1,10 @@
 use clap::{App, Arg};
-use core_graphics::display::{CGDisplay};
+use core_graphics::display::CGDisplay;
 use dirs::home_dir;
-use std::path::{Path, PathBuf};
-use std::io::Write;
+use std::error::Error;
 use std::fs::File;
+use std::io::Write;
+use std::path::{Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
 
@@ -28,6 +29,8 @@ impl DisplayLocation {
         DisplayLocation { id, x, y }
     }
 }
+
+type CommandResult = Result<(), Box<dyn Error>>;
 
 fn main() {
     let config = App::new("DisplayKeeper")
@@ -55,17 +58,31 @@ fn main() {
     let save_location = config.value_of("save");
     let restore_location = config.value_of("restore");
 
-    match (save_location, restore_location) {
+    let execution_result = match (save_location, restore_location) {
         (Some("default"), Some("default")) => {
-            eprintln!("Both save and restore commands were specified.");
+            Result::Err(Box::from("Both 'save' and 'restore' options are specified"))
         }
         (None, Some(config_name)) => restore(&config_name),
-        (Some(config_name), None) => save(&config_name),
-        (_, _) => eprintln!("Configuration is invalid."),
-    }
+        (Some(config_name), None) => {
+            println!("Saving current configuration with name '{}'", config_name);
+            save(&config_name)
+        }
+        (_, _) => Result::Err(Box::from("Configuration is invalid")),
+    };
+
+    ::std::process::exit(match execution_result {
+        Ok(_) => {
+            println!("Done");
+            0
+        }
+        Err(err) => {
+            eprintln!("error: {:?}", err);
+            1
+        }
+    });
 }
 
-fn save(config_name: &str) {
+fn save(config_name: &str) -> CommandResult {
     const DEFAULT_CONFIG_LOCATION: &str = ".displaykeeper";
 
     let home_dir = home_dir().unwrap();
@@ -81,10 +98,14 @@ fn save(config_name: &str) {
     let json_config = serde_json::to_string_pretty(&configuration);
 
     let mut file = File::create(config_path).unwrap();
-    file.write_all(json_config.unwrap().as_bytes()).unwrap();
+    let write_file = file.write_all(json_config.unwrap().as_bytes());
+    match write_file {
+        Result::Ok(_) => Result::Ok(()),
+        Result::Err(err) => Result::Err(Box::from(err)),
+    }
 }
 
-fn get_active_displays() -> Option<Vec<DisplayLocation>> {
+fn get_active_displays() -> Result<Vec<DisplayLocation>, Box<dyn Error>> {
     let displays = CGDisplay::active_displays();
     let mut result: Vec<DisplayLocation> = Vec::new();
     match displays {
@@ -95,14 +116,16 @@ fn get_active_displays() -> Option<Vec<DisplayLocation>> {
                 let origin = bounds.origin;
                 result.push(DisplayLocation::new(id, origin.x as i32, origin.y as i32));
             }
+            Result::Ok(result)
         }
-        Result::Err(e) => panic!(e),
-    };
-
-    Some(result)
+        Result::Err(error_code) => Result::Err(Box::from(format!(
+            "Cannot get dispaly current display configuration. Error code {}.",
+            error_code
+        ))),
+    }
 }
 
-fn restore(config_name: &str) {
+fn restore(config_name: &str) -> CommandResult {
     let stored_config = vec![
         DisplayLocation::new(731409289, -1714, -1440),
         DisplayLocation::new(69733382, 0, 0),
@@ -146,10 +169,10 @@ fn restore(config_name: &str) {
                         println!("No cached config exists");
                         continue;
                     }
+                };
+            }
+            Result::Ok(())
         }
+        Result::Err(err) => Result::Err(Box::from(format!("Operation failed with code: {}", err))),
     }
-        }
-        Result::Err(err) => panic!(err),
-    }
-}
 }
