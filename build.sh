@@ -2,9 +2,11 @@
 
 set -ex
 
+VERSION=${1:-"XXX"}
+
 create_release_package() {
     local target="x86_64-apple-darwin"
-    local name="displayutil-xxx-${target}"
+    local name="displayutil-${VERSION}-${target}"
 
     cargo build --target "$target" --release
 
