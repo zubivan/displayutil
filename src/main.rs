@@ -30,7 +30,10 @@ impl DisplayLocation {
     }
 }
 
-type CommandResult = Result<(), Box<dyn Error>>;
+type CommandResult = Result<String, Box<dyn Error>>;
+
+const ARRANGEMENT_COMMAND: &str = "arrangement";
+const ARRANGEMENT_COMMAND_SHORT: &str = "a";
 
 const SAVE_COMMAND: &str = "save";
 const RESTORE_COMMAND: &str = "restore";
@@ -40,41 +43,32 @@ fn main() {
         .version("0.1.0")
         .author("Ivan Z. <zub.ivan@gmail.com>")
         .arg(
-            Arg::with_name(SAVE_COMMAND)
-                .long(SAVE_COMMAND)
+            Arg::with_name(ARRANGEMENT_COMMAND)                
+                .long(ARRANGEMENT_COMMAND)
+                .short(ARRANGEMENT_COMMAND_SHORT)
                 .conflicts_with(RESTORE_COMMAND)
-                .required(true),
-        )
-        .arg(
-            Arg::with_name(RESTORE_COMMAND)
-                .long(RESTORE_COMMAND)
-                .conflicts_with(SAVE_COMMAND)
+                .takes_value(true)
+                .possible_values(&[SAVE_COMMAND, RESTORE_COMMAND])
                 .required(true),
         )
         .get_matches();
 
-    let save_is_set = config.is_present(SAVE_COMMAND);
-    let restore_is_set = config.is_present(RESTORE_COMMAND);
+    let selected_command = config.value_of(ARRANGEMENT_COMMAND);
 
-    let execution_result = match (save_is_set, restore_is_set) {
-        (true, true) => Result::Err(Box::from(format!(
-            "Both '{}' and '{}' options are specified",
-            SAVE_COMMAND, RESTORE_COMMAND
-        ))),
-        (false, true) => {
-            println!("Restoring configuration");
-            save("default")
-        }
-        (true, false) => {
-            println!("Saving current configuration");
-            restore("default")
-        }
-        _ => Result::Err(Box::from("Configuration is invalid")),
+    let execution_result = match selected_command {
+        Some(command) => {
+            match command {
+                SAVE_COMMAND => save("default"),
+                RESTORE_COMMAND => restore("default"),
+                _ => Result::Err(Box::from("Configuration is invalid"))
+            }
+        },
+        None => Result::Err(Box::from("Configuration is invalid")),
     };
 
     ::std::process::exit(match execution_result {
-        Ok(_) => {
-            println!("Done");
+        Ok(message) => {
+            println!("{}", message);
             0
         }
         Err(err) => {
@@ -94,10 +88,10 @@ fn save(config_name: &str) -> CommandResult {
 
     let config_path = get_config_file_location();
 
-    let mut file = File::create(config_path)?;
+    let mut file = File::create(&config_path)?;
     let write_file = file.write_all(json_config?.as_bytes());
     match write_file {
-        Result::Ok(_) => Result::Ok(()),
+        Result::Ok(_) => Result::Ok(format!("Configuration is saved to '{}'", config_path.to_str().unwrap())),
         Result::Err(err) => Result::Err(Box::from(err)),
     }
 }
@@ -168,12 +162,11 @@ fn restore(config_name: &str) -> CommandResult {
                         change_display_location(id, display_config.x, display_config.y);
                     }
                     None => {
-                        println!("No stored config exists");
                         continue;
                     }
                 };
             }
-            Result::Ok(())
+            Result::Ok("Configuration finished.".to_string())
         }
         Result::Err(err) => Result::Err(Box::from(format!("Operation failed with code: {}", err))),
     }
