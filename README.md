@@ -1,4 +1,4 @@
-displayutil is a command line tool for display managment on macOS built with Rust.
+*displayutil* is a command line tool for display managment on macOS built with Rust.
 
 As the first feature it fights macOS forgeting your display layout everytime you connect that external monitors.
 
@@ -20,9 +20,9 @@ Configuration finished.
 Roadmap
 -----
 
-[x] Support saving and restoring arrangment of external monitors
-[ ] Support multiple configurations, i.e. office, home.
-[ ] Store and restore screen rotation information
-[ ] Run as a service and apply configuration to on a fly
-[ ] Expose more display settings
-[ ] GUI
+- [x] Support saving and restoring arrangment of external monitors
+- [ ] Support multiple configurations, i.e. office, home.
+- [ ] Store and restore screen rotation information
+- [ ] Run as a service and apply configuration to on a fly
+- [ ] Expose more display settings
+- [ ] GUI
