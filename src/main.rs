@@ -43,7 +43,7 @@ fn main() {
         .version("0.1.0")
         .author("Ivan Z. <zub.ivan@gmail.com>")
         .arg(
-            Arg::with_name(ARRANGEMENT_COMMAND)                
+            Arg::with_name(ARRANGEMENT_COMMAND)
                 .long(ARRANGEMENT_COMMAND)
                 .short(ARRANGEMENT_COMMAND_SHORT)
                 .conflicts_with(RESTORE_COMMAND)
@@ -56,12 +56,10 @@ fn main() {
     let selected_command = config.value_of(ARRANGEMENT_COMMAND);
 
     let execution_result = match selected_command {
-        Some(command) => {
-            match command {
-                SAVE_COMMAND => save("default"),
-                RESTORE_COMMAND => restore("default"),
-                _ => Result::Err(Box::from("Configuration is invalid"))
-            }
+        Some(command) => match command {
+            SAVE_COMMAND => save("default"),
+            RESTORE_COMMAND => restore("default"),
+            _ => Result::Err(Box::from("Configuration is invalid")),
         },
         None => Result::Err(Box::from("Configuration is invalid")),
     };
@@ -72,7 +70,7 @@ fn main() {
             0
         }
         Err(err) => {
-            eprintln!("error: {:?}", err);
+            eprintln!("error: {}", err);
             1
         }
     });
@@ -91,21 +89,29 @@ fn save(config_name: &str) -> CommandResult {
     let mut file = File::create(&config_path)?;
     let write_file = file.write_all(json_config?.as_bytes());
     match write_file {
-        Result::Ok(_) => Result::Ok(format!("Configuration is saved to '{}'", config_path.to_str().unwrap())),
+        Result::Ok(_) => Result::Ok(format!(
+            "Configuration is saved to '{}'",
+            config_path.to_str().unwrap()
+        )),
         Result::Err(err) => Result::Err(Box::from(err)),
     }
 }
 
 fn read_stored_config(config_name: &str) -> Result<Vec<DisplayLocation>, Box<dyn Error>> {
     let config_path = get_config_file_location();
-    let file = File::open(config_path)?;
-    let reader = BufReader::new(file);
-    let store: ConfigurationElement = serde_json::from_reader(reader)?;
+    let file = File::open(config_path);
+    match file {
+        Ok(file) => {
+            let reader = BufReader::new(file);
+            let store: ConfigurationElement = serde_json::from_reader(reader)?;
 
-    if store.name == config_name {
-        Ok(store.configuration)
-    } else {
-        Err(Box::from("Configuration not found"))
+            if store.name == config_name {
+                Ok(store.configuration)
+            } else {
+                Err(Box::from("Configuration not found"))
+            }
+        }
+        Err(e) => Err(Box::from(format!("{}", e))),
     }
 }
 
