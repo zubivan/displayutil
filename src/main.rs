@@ -9,7 +9,7 @@ use std::path::PathBuf;
 use serde::{Deserialize, Serialize};
 
 mod cg_extensions;
-use cg_extensions::change_display_location;
+use cg_extensions::change_display_origin;
 
 #[derive(Serialize, Deserialize)]
 struct DisplayLocation {
@@ -165,7 +165,7 @@ fn restore(config_name: &str) -> CommandResult {
                             continue;
                         }
 
-                        change_display_location(id, display_config.x, display_config.y);
+                        change_display_origin(id, display_config.x, display_config.y);
                     }
                     None => {
                         continue;
